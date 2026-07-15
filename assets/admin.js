@@ -47,7 +47,8 @@ let state = {
   page: "dashboard",
   rows: {},
   activeFilter: "All",
-  search: ""
+  search: "",
+  weather: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -63,6 +64,33 @@ function titleize(value) {
 function displayNameForEmail(email = "") {
   const normalized = String(email).toLowerCase();
   return displayNames[normalized] || normalized || "Admin";
+}
+
+function updateAbuDhabiTime() {
+  const formatter = new Intl.DateTimeFormat("en-AE", {
+    timeZone: "Asia/Dubai",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
+  $("#abuDhabiTime").textContent = `Abu Dhabi ${formatter.format(new Date())}`;
+}
+
+async function loadAbuDhabiWeather() {
+  try {
+    const response = await fetch("https://api.open-meteo.com/v1/forecast?latitude=24.4539&longitude=54.3773&current=temperature_2m&timezone=Asia%2FDubai");
+    if (!response.ok) throw new Error("Weather unavailable");
+    const payload = await response.json();
+    const value = payload.current?.temperature_2m;
+    state.weather = Number.isFinite(value) ? Math.round(value) : null;
+  } catch {
+    state.weather = null;
+  }
+  renderAbuDhabiWeather();
+}
+
+function renderAbuDhabiWeather() {
+  $("#abuDhabiWeather").textContent = state.weather === null ? "Weather --°C" : `Weather ${state.weather}°C`;
 }
 
 function departmentGroup(value = "") {
@@ -127,9 +155,15 @@ function renderShell() {
 
 function setTopActions(mode) {
   const dashboardMode = mode === "dashboard";
-  $("#globalSearch").hidden = dashboardMode;
+  $(".topbar").classList.toggle("dashboard-topbar", dashboardMode);
+  $(".table-search").hidden = dashboardMode;
+  $("#dashboardMeta").hidden = !dashboardMode;
   $("#refreshButton").textContent = dashboardMode ? "Sign out" : "Refresh";
   $("#refreshButton").dataset.action = dashboardMode ? "signout" : "refresh";
+  if (dashboardMode) {
+    updateAbuDhabiTime();
+    renderAbuDhabiWeather();
+  }
 }
 
 function metric(label, value) {
@@ -353,4 +387,8 @@ $("#recordForm").addEventListener("submit", async (event) => {
     await loadPageData();
     await showPage(state.page);
   }
+  updateAbuDhabiTime();
+  setInterval(updateAbuDhabiTime, 30000);
+  loadAbuDhabiWeather();
+  setInterval(loadAbuDhabiWeather, 900000);
 })();
