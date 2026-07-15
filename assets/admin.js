@@ -78,15 +78,39 @@ function updateAbuDhabiTime() {
 
 async function loadAbuDhabiWeather() {
   try {
-    const response = await fetch("https://api.open-meteo.com/v1/forecast?latitude=24.4539&longitude=54.3773&current=temperature_2m&timezone=Asia%2FDubai");
-    if (!response.ok) throw new Error("Weather unavailable");
-    const payload = await response.json();
+    const payload = await requestJson("https://api.open-meteo.com/v1/forecast?latitude=24.4539&longitude=54.3773&current=temperature_2m&timezone=Asia%2FDubai");
     const value = payload.current?.temperature_2m;
     state.weather = Number.isFinite(value) ? Math.round(value) : null;
   } catch {
     state.weather = null;
   }
   renderAbuDhabiWeather();
+}
+
+function requestJson(url) {
+  if (typeof fetch === "function") {
+    return fetch(url).then((response) => {
+      if (!response.ok) throw new Error("Weather unavailable");
+      return response.json();
+    });
+  }
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("GET", url, true);
+    request.onload = () => {
+      if (request.status < 200 || request.status >= 300) {
+        reject(new Error("Weather unavailable"));
+        return;
+      }
+      try {
+        resolve(JSON.parse(request.responseText));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    request.onerror = () => reject(new Error("Weather unavailable"));
+    request.send();
+  });
 }
 
 function renderAbuDhabiWeather() {
