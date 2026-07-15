@@ -6,7 +6,7 @@
   <title>Citi Homes Administration</title>
   <meta name="description" content="Citi Homes P&C Administration System">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="assets/admin.css?v=viewer-bg-20260715">
+  <link rel="stylesheet" href="assets/admin.css?v=password-toggle-20260715">
 </head>
 <body>
   <main id="loginView" class="login-shell">
@@ -24,7 +24,10 @@
           <input id="username" name="email" type="email" autocomplete="username" placeholder="admin@citihomes.ae" required>
         </label>
         <label>Password
-          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
+          <span class="password-field">
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
+            <button id="passwordToggle" type="button" aria-label="Show password">Show</button>
+          </span>
         </label>
         <button type="submit">Login</button>
         <p id="loginMessage" class="form-message"></p>
@@ -83,6 +86,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/supabase-config.js?v=super-user-20260715"></script>
-  <script src="assets/admin.js?v=viewer-bg-20260715"></script>
+  <script src="assets/admin.js?v=password-toggle-20260715"></script>
 </body>
 </html>
