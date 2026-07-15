@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Citi Homes Administration</title>
+  <meta name="description" content="Citi Homes P&C Administration System">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="stylesheet" href="assets/admin.css">
+</head>
+<body>
+  <main id="loginView" class="login-shell">
+    <section class="login-panel glass">
+      <div class="brand-lockup">
+        <div class="brand-mark">CH</div>
+        <div>
+          <p class="eyebrow">CITI HOMES</p>
+          <h1>Administration System</h1>
+        </div>
+      </div>
+      <p class="login-copy">Source management dashboard for Operations, P&C and Administration, Recruitment, Attendance, Procurement and administration control.</p>
+      <form id="loginForm" class="login-form">
+        <label>Email
+          <input id="username" name="email" type="email" autocomplete="username" placeholder="admin@citihomes.ae" required>
+        </label>
+        <label>Password
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
+        </label>
+        <button type="submit">Login</button>
+        <p id="loginMessage" class="form-message"></p>
+      </form>
+    </section>
+  </main>
+
+  <main id="appView" class="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="brand-lockup compact">
+        <div class="brand-mark">CH</div>
+        <div>
+          <p class="eyebrow">CITI HOMES</p>
+          <strong>Administration</strong>
+        </div>
+      </div>
+      <nav id="navList" class="nav-list"></nav>
+      <button id="logoutButton" class="ghost-button">Logout</button>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar glass">
+        <div>
+          <p class="eyebrow" id="roleLabel">Admin workspace</p>
+          <h2 id="pageTitle">Dashboard</h2>
+        </div>
+        <div class="top-actions">
+          <input id="globalSearch" placeholder="Search current table">
+          <button id="refreshButton">Refresh</button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="page-panel"></section>
+      <section id="tablePage" class="page-panel" hidden>
+        <div id="summaryCards" class="summary-grid"></div>
+        <div id="pageTools" class="tool-row"></div>
+        <div class="table-wrap glass">
+          <table id="dataTable"></table>
+        </div>
+        <details id="addRecordPanel" class="add-panel glass">
+          <summary>Add new record</summary>
+          <form id="recordForm" class="record-form"></form>
+        </details>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/supabase-config.js"></script>
+  <script src="assets/admin.js"></script>
+</body>
+</html>
