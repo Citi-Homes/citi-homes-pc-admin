@@ -191,9 +191,8 @@ function renderShell() {
 
   const displayName = displayNameForEmail(state.session.user?.email);
   $("#roleLabel").textContent = displayName;
-  $("#accessLabel").textContent = isSuperUser() ? "Super User · Full Access" : isViewer() ? "Test Profile · View Only" : "Secure Workspace";
-  $("#accessLabel").classList.toggle("super-user-badge", isSuperUser());
-  $("#accessLabel").classList.toggle("viewer-badge", isViewer());
+  $("#accessLabel").textContent = "Team Member";
+  $("#accessLabel").classList.remove("super-user-badge", "viewer-badge");
   $("#navList").innerHTML = pages.map((page) => (
     `<button class="nav-item ${state.page === page.key ? "active" : ""}" data-page="${page.key}">
       <span>${page.label}</span><span>${page.external ? "↗" : ""}</span>
