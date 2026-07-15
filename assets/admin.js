@@ -44,6 +44,7 @@ const options = {
 
 let state = {
   session: null,
+  portalUser: null,
   page: "dashboard",
   rows: {},
   activeFilter: "All",
@@ -57,6 +58,8 @@ const displayNames = {
   "umer@citihomes.ae": "Umer Raza"
 };
 
+const superUserEmails = new Set(["umer@citihomes.ae"]);
+
 function titleize(value) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -64,6 +67,14 @@ function titleize(value) {
 function displayNameForEmail(email = "") {
   const normalized = String(email).toLowerCase();
   return displayNames[normalized] || normalized || "Admin";
+}
+
+function normalizedEmail() {
+  return String(state.session?.user?.email || "").toLowerCase();
+}
+
+function isSuperUser() {
+  return superUserEmails.has(normalizedEmail()) || state.portalUser?.role === "Super User";
 }
 
 function updateAbuDhabiTime() {
@@ -128,7 +139,7 @@ async function signIn(email, password) {
   if (!client) throw new Error("Supabase anon key is not configured in assets/supabase-config.js.");
   const { data, error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw error;
-  await verifyPortalAccess();
+  state.portalUser = await verifyPortalAccess();
   return data.session;
 }
 
@@ -170,6 +181,8 @@ function renderShell() {
 
   const displayName = displayNameForEmail(state.session.user?.email);
   $("#roleLabel").textContent = displayName;
+  $("#accessLabel").textContent = isSuperUser() ? "Super User · Full Access" : "Secure Workspace";
+  $("#accessLabel").classList.toggle("super-user-badge", isSuperUser());
   $("#navList").innerHTML = pages.map((page) => (
     `<button class="nav-item ${state.page === page.key ? "active" : ""}" data-page="${page.key}">
       <span>${page.label}</span><span>${page.external ? "↗" : ""}</span>
@@ -366,6 +379,7 @@ $("#loginForm").addEventListener("submit", async (event) => {
 $("#logoutButton").addEventListener("click", async () => {
   if (client) await client.auth.signOut();
   state.session = null;
+  state.portalUser = null;
   state.rows = {};
   renderShell();
 });
@@ -374,6 +388,7 @@ $("#refreshButton").addEventListener("click", async () => {
   if ($("#refreshButton").dataset.action === "signout") {
     if (client) await client.auth.signOut();
     state.session = null;
+    state.portalUser = null;
     state.rows = {};
     renderShell();
     return;
@@ -407,7 +422,7 @@ $("#recordForm").addEventListener("submit", async (event) => {
   state.session = data.session;
   renderShell();
   if (state.session) {
-    await verifyPortalAccess();
+    state.portalUser = await verifyPortalAccess();
     await loadPageData();
     await showPage(state.page);
   }
