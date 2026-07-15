@@ -6,7 +6,7 @@
   <title>Citi Homes Administration</title>
   <meta name="description" content="Citi Homes P&C Administration System">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="assets/admin.css?v=dashboard-name-20260715">
+  <link rel="stylesheet" href="assets/admin.css?v=dashboard-header-20260715">
 </head>
 <body>
   <main id="loginView" class="login-shell">
@@ -47,13 +47,19 @@
 
     <section class="workspace">
       <header class="topbar glass">
-        <div>
-          <p class="eyebrow" id="roleLabel">Admin workspace</p>
+        <div class="top-title">
           <h2 id="pageTitle">Dashboard</h2>
         </div>
-        <div class="top-actions">
+        <div id="dashboardMeta" class="dashboard-meta" hidden>
+          <span id="abuDhabiTime">Abu Dhabi --:--</span>
+          <span id="abuDhabiWeather">Weather --°C</span>
+        </div>
+        <div class="table-search">
           <input id="globalSearch" placeholder="Search current table">
-          <button id="refreshButton">Refresh</button>
+        </div>
+        <div class="workspace-actions">
+          <p class="eyebrow" id="roleLabel">Secure Workspace</p>
+          <button id="refreshButton">Sign out</button>
         </div>
       </header>
 
@@ -73,7 +79,7 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="assets/supabase-config.js?v=dashboard-name-20260715"></script>
-  <script src="assets/admin.js?v=dashboard-name-20260715"></script>
+  <script src="assets/supabase-config.js?v=dashboard-header-20260715"></script>
+  <script src="assets/admin.js?v=dashboard-header-20260715"></script>
 </body>
 </html>
