@@ -44,16 +44,98 @@ const options = {
 
 let state = {
   session: null,
+  portalUser: null,
   page: "dashboard",
   rows: {},
   activeFilter: "All",
-  search: ""
+  search: "",
+  weather: null
 };
 
 const $ = (selector) => document.querySelector(selector);
 
+const displayNames = {
+  "umer@citihomes.ae": "Umer Raza",
+  "test@citihomes.ae": "Test Profile"
+};
+
+const superUserEmails = new Set(["umer@citihomes.ae"]);
+const viewerEmails = new Set(["test@citihomes.ae"]);
+
 function titleize(value) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function displayNameForEmail(email = "") {
+  const normalized = String(email).toLowerCase();
+  return displayNames[normalized] || normalized || "Admin";
+}
+
+function normalizedEmail() {
+  return String(state.session?.user?.email || "").toLowerCase();
+}
+
+function isSuperUser() {
+  return superUserEmails.has(normalizedEmail()) || state.portalUser?.role === "Super User";
+}
+
+function isViewer() {
+  return viewerEmails.has(normalizedEmail()) || state.portalUser?.role === "Viewer";
+}
+
+function canEdit() {
+  return !isViewer();
+}
+
+function updateAbuDhabiTime() {
+  const formatter = new Intl.DateTimeFormat("en-AE", {
+    timeZone: "Asia/Dubai",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true
+  });
+  $("#abuDhabiTime").textContent = formatter.format(new Date());
+}
+
+async function loadAbuDhabiWeather() {
+  try {
+    const payload = await requestJson("https://api.open-meteo.com/v1/forecast?latitude=24.4539&longitude=54.3773&current=temperature_2m&timezone=Asia%2FDubai");
+    const value = payload.current?.temperature_2m;
+    state.weather = Number.isFinite(value) ? Math.round(value) : null;
+  } catch {
+    state.weather = null;
+  }
+  renderAbuDhabiWeather();
+}
+
+function requestJson(url) {
+  if (typeof fetch === "function") {
+    return fetch(url).then((response) => {
+      if (!response.ok) throw new Error("Weather unavailable");
+      return response.json();
+    });
+  }
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("GET", url, true);
+    request.onload = () => {
+      if (request.status < 200 || request.status >= 300) {
+        reject(new Error("Weather unavailable"));
+        return;
+      }
+      try {
+        resolve(JSON.parse(request.responseText));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    request.onerror = () => reject(new Error("Weather unavailable"));
+    request.send();
+  });
+}
+
+function renderAbuDhabiWeather() {
+  $("#abuDhabiWeather").textContent = state.weather === null ? "--°C" : `${state.weather}°C`;
 }
 
 function departmentGroup(value = "") {
@@ -67,7 +149,7 @@ async function signIn(email, password) {
   if (!client) throw new Error("Supabase anon key is not configured in assets/supabase-config.js.");
   const { data, error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw error;
-  await verifyPortalAccess();
+  state.portalUser = await verifyPortalAccess();
   return data.session;
 }
 
@@ -107,13 +189,25 @@ function renderShell() {
   $("#appView").hidden = !state.session;
   if (!state.session) return;
 
-  const email = state.session.user?.email || "Admin";
-  $("#roleLabel").textContent = `${email} · secure workspace`;
+  const displayName = displayNameForEmail(state.session.user?.email);
+  $("#roleLabel").textContent = displayName;
+  $("#accessLabel").textContent = "Team Member";
+  $("#accessLabel").classList.remove("super-user-badge", "viewer-badge");
   $("#navList").innerHTML = pages.map((page) => (
     `<button class="nav-item ${state.page === page.key ? "active" : ""}" data-page="${page.key}">
       <span>${page.label}</span><span>${page.external ? "↗" : ""}</span>
     </button>`
   )).join("");
+}
+
+function setTopActions() {
+  $(".topbar").classList.add("dashboard-topbar");
+  $(".table-search").hidden = true;
+  $("#dashboardMeta").hidden = false;
+  $("#refreshButton").textContent = "Sign out";
+  $("#refreshButton").dataset.action = "signout";
+  updateAbuDhabiTime();
+  renderAbuDhabiWeather();
 }
 
 function metric(label, value) {
@@ -124,6 +218,7 @@ function renderDashboard() {
   $("#dashboard").hidden = false;
   $("#tablePage").hidden = true;
   $("#pageTitle").textContent = "Dashboard";
+  setTopActions("dashboard");
 
   const employeeCount = (state.rows.employees || []).length;
   const recruitmentOpen = (state.rows.recruitment || []).filter((row) => !["Joined", "Rejected"].includes(row.status)).length;
@@ -158,6 +253,7 @@ function renderTablePage(page) {
   $("#dashboard").hidden = true;
   $("#tablePage").hidden = false;
   $("#pageTitle").textContent = page.label;
+  setTopActions("table");
 
   const rows = filteredRows(page);
   $("#summaryCards").innerHTML = `
@@ -169,7 +265,7 @@ function renderTablePage(page) {
 
   $("#pageTools").innerHTML = page.filters ? page.filters.map((item) => (
     `<button class="pill ${state.activeFilter === item ? "active" : ""}" data-filter="${item}">${item}</button>`
-  )).join("") : "";
+  )).join("") : isViewer() ? `<span class="viewer-notice">View only mode</span>` : "";
 
   renderTable(page, rows);
   renderForm(page);
@@ -190,8 +286,9 @@ function renderTable(page, rows) {
           <td>${index + 1}</td>
           ${cols.map((col) => `<td>${fieldControl(col, row[col] ?? "")}</td>`).join("")}
           <td class="row-actions">
-            <button data-save="${row.id}">Save</button>
-            <button class="danger" data-delete="${row.id}">Delete</button>
+            ${canEdit()
+              ? `<button data-save="${row.id}">Save</button><button class="danger" data-delete="${row.id}">Delete</button>`
+              : `<span class="view-only-pill">View only</span>`}
           </td>
         </tr>
       `).join("")}
@@ -201,16 +298,23 @@ function renderTable(page, rows) {
 
 function fieldControl(column, value) {
   const safeValue = String(value).replaceAll('"', "&quot;");
+  const disabled = canEdit() ? "" : " disabled";
   if (options[column]) {
-    return `<select data-field="${column}">${options[column].map((item) => `<option ${String(value) === item ? "selected" : ""}>${item}</option>`).join("")}</select>`;
+    return `<select data-field="${column}"${disabled}>${options[column].map((item) => `<option ${String(value) === item ? "selected" : ""}>${item}</option>`).join("")}</select>`;
   }
   const type = column.includes("date") || column.includes("expiry") || column.includes("renewal") ? "date" : "text";
-  return `<input data-field="${column}" type="${type}" value="${safeValue}">`;
+  return `<input data-field="${column}" type="${type}" value="${safeValue}"${disabled}>`;
 }
 
 function renderForm(page) {
   const cols = columns[page.table] || [];
   $("#addRecordPanel").open = false;
+  $("#addRecordPanel").hidden = isViewer();
+  if (isViewer()) {
+    $("#recordForm").innerHTML = "";
+    return;
+  }
+  $("#addRecordPanel").hidden = false;
   $("#recordForm").innerHTML = cols.map((col) => (
     `<label>${titleize(col)}${fieldControl(col, col === "department" ? "Operations" : "")}</label>`
   )).join("") + `<button type="submit">Add Record</button>`;
@@ -257,6 +361,10 @@ document.addEventListener("click", async (event) => {
       state.activeFilter = filterButton.dataset.filter;
       await showPage(state.page);
     }
+    if ((saveButton || deleteButton) && !canEdit()) {
+      alert("This test profile is view-only.");
+      return;
+    }
     if (saveButton) {
       const page = pages.find((item) => item.key === state.page);
       await upsertRow(page.table, rowFromElement(saveButton.closest("tr")));
@@ -287,14 +395,40 @@ $("#loginForm").addEventListener("submit", async (event) => {
   }
 });
 
+function setPasswordVisible(visible) {
+  const password = $("#password");
+  password.type = visible ? "text" : "password";
+  $("#passwordToggle").textContent = visible ? "Hide" : "Show";
+}
+
+["mousedown", "touchstart", "pointerdown"].forEach((eventName) => {
+  $("#passwordToggle").addEventListener(eventName, (event) => {
+    event.preventDefault();
+    setPasswordVisible(true);
+  });
+});
+
+["mouseup", "mouseleave", "blur", "touchend", "touchcancel", "pointerup", "pointerleave", "pointercancel"].forEach((eventName) => {
+  $("#passwordToggle").addEventListener(eventName, () => setPasswordVisible(false));
+});
+
 $("#logoutButton").addEventListener("click", async () => {
   if (client) await client.auth.signOut();
   state.session = null;
+  state.portalUser = null;
   state.rows = {};
   renderShell();
 });
 
 $("#refreshButton").addEventListener("click", async () => {
+  if ($("#refreshButton").dataset.action === "signout") {
+    if (client) await client.auth.signOut();
+    state.session = null;
+    state.portalUser = null;
+    state.rows = {};
+    renderShell();
+    return;
+  }
   await loadPageData();
   await showPage(state.page);
 });
@@ -306,6 +440,10 @@ $("#globalSearch").addEventListener("input", async (event) => {
 
 $("#recordForm").addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!canEdit()) {
+    alert("This test profile is view-only.");
+    return;
+  }
   const page = pages.find((item) => item.key === state.page);
   const row = rowFromElement(event.currentTarget);
   await upsertRow(page.table, row);
@@ -324,8 +462,12 @@ $("#recordForm").addEventListener("submit", async (event) => {
   state.session = data.session;
   renderShell();
   if (state.session) {
-    await verifyPortalAccess();
+    state.portalUser = await verifyPortalAccess();
     await loadPageData();
     await showPage(state.page);
   }
+  updateAbuDhabiTime();
+  setInterval(updateAbuDhabiTime, 30000);
+  loadAbuDhabiWeather();
+  setInterval(loadAbuDhabiWeather, 900000);
 })();
