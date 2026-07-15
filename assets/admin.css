@@ -589,6 +589,47 @@ td input, td select {
   font-size: 0.78rem;
 }
 
+.row-actions .save-button {
+  min-width: 58px;
+  height: 34px;
+  justify-content: center;
+  transition: width 0.18s ease, min-width 0.18s ease, border-radius 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.row-actions .save-button.saving,
+.row-actions .save-button.saved {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.row-actions .save-button.saving {
+  color: transparent;
+  pointer-events: none;
+}
+
+.row-actions .save-button.saving::after {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.48);
+  border-top-color: #fff;
+  animation: save-spin 0.7s linear infinite;
+}
+
+.row-actions .save-button.saved {
+  background: linear-gradient(135deg, var(--green), var(--gold));
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(95, 81, 48, 0.24);
+  pointer-events: none;
+}
+
+@keyframes save-spin {
+  to { transform: rotate(360deg); }
+}
+
 .view-only-pill,
 .viewer-notice {
   display: inline-flex;
