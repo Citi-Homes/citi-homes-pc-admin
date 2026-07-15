@@ -67,7 +67,22 @@ async function signIn(email, password) {
   if (!client) throw new Error("Supabase anon key is not configured in assets/supabase-config.js.");
   const { data, error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  await verifyPortalAccess();
   return data.session;
+}
+
+async function verifyPortalAccess() {
+  const { data, error } = await client
+    .from("admin_portal_users")
+    .select("role,is_active")
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw new Error("Your login worked, but the administration access rule is not ready yet.");
+  if (!data) {
+    await client.auth.signOut();
+    throw new Error("This account is not approved for the Administration System.");
+  }
+  return data;
 }
 
 async function fetchRows(table) {
@@ -309,6 +324,7 @@ $("#recordForm").addEventListener("submit", async (event) => {
   state.session = data.session;
   renderShell();
   if (state.session) {
+    await verifyPortalAccess();
     await loadPageData();
     await showPage(state.page);
   }
