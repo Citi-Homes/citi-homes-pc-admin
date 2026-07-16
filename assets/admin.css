@@ -554,6 +554,11 @@ table {
   min-width: 900px;
 }
 
+.compact-table {
+  min-width: 100%;
+  table-layout: fixed;
+}
+
 th, td {
   padding: 0.82rem 0.9rem;
   border-bottom: 1px solid rgba(36,37,39,0.08);
@@ -577,6 +582,59 @@ td input, td select {
   min-width: 140px;
   padding: 0.55rem 0.65rem;
   border-radius: 10px;
+}
+
+.compact-table th,
+.compact-table td {
+  padding: 0.48rem 0.38rem;
+  font-size: 0.76rem;
+}
+
+.compact-table th {
+  font-size: 0.66rem;
+  letter-spacing: 0.045em;
+}
+
+.compact-table td input,
+.compact-table td select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.42rem 0.42rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+}
+
+.recruitment-table th:first-child,
+.recruitment-table td:first-child {
+  width: 54px;
+}
+
+.recruitment-table th:nth-child(2),
+.recruitment-table td:nth-child(2),
+.recruitment-table th:nth-child(3),
+.recruitment-table td:nth-child(3) {
+  width: 11%;
+}
+
+.recruitment-table th:nth-child(5),
+.recruitment-table td:nth-child(5),
+.recruitment-table th:nth-child(12),
+.recruitment-table td:nth-child(12) {
+  width: 8%;
+}
+
+.recruitment-table th:last-child,
+.recruitment-table td:last-child {
+  width: 92px;
+}
+
+.compact-table .row-actions {
+  gap: 0.25rem;
+}
+
+.compact-table .row-actions button {
+  padding: 0.38rem 0.5rem;
+  font-size: 0.68rem;
 }
 
 .row-actions {
