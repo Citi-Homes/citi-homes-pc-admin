@@ -273,7 +273,6 @@ function renderTablePage(page) {
     ${metric("Total Records", (state.rows[page.table] || []).length)}
     ${metric("Current View", rows.length)}
     ${metric("Added Today", rows.filter((row) => String(row.created_at || "").startsWith(new Date().toISOString().slice(0, 10))).length)}
-    ${metric("Backend", "Supabase")}
   `;
 
   $("#pageTools").innerHTML = page.filters ? page.filters.map((item) => (
