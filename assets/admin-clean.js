@@ -90,6 +90,7 @@ const displayNames = {
 
 const superUserEmails = new Set(["umer@citihomes.ae"]);
 const viewerEmails = new Set(["test@citihomes.ae"]);
+const dashboardTables = ["employees", "recruitment", "documents", "utilities"];
 
 function titleize(value) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
@@ -302,6 +303,7 @@ function renderTablePage(page) {
   )).join("") : "";
   const importTools = page.table === "recruitment" && canEdit()
     ? `<button class="pill import-button" data-import="recruitment">Import Recruitment Data</button>
+       <button class="pill" data-export="recruitment">Export Candidates CSV</button>
        <button class="pill danger-outline" data-clear-table="recruitment">Clear Recruitment Data</button>
        <input id="recruitmentImportFile" type="file" accept=".csv,.xlsx,.xls" hidden>`
     : "";
@@ -375,6 +377,23 @@ async function loadPageData() {
   }));
 }
 
+async function loadTables(tables, options = {}) {
+  const uniqueTables = [...new Set(tables)];
+  await Promise.all(uniqueTables.map(async (table) => {
+    if (!options.force && state.rows[table]) return;
+    state.rows[table] = await fetchRows(table);
+  }));
+}
+
+async function loadDashboardData(options = {}) {
+  await loadTables(dashboardTables, options);
+}
+
+async function ensurePageData(page, options = {}) {
+  if (!page.table) return;
+  await loadTables([page.table], options);
+}
+
 async function showPage(key) {
   const page = pages.find((item) => item.key === key) || pages[0];
   if (page.external) {
@@ -383,8 +402,13 @@ async function showPage(key) {
   }
   state.page = page.key;
   renderShell();
-  if (page.key === "dashboard") renderDashboard();
-  else renderTablePage(page);
+  if (page.key === "dashboard") {
+    await loadDashboardData();
+    renderDashboard();
+  } else {
+    await ensurePageData(page);
+    renderTablePage(page);
+  }
 }
 
 function rowFromElement(rowElement) {
@@ -494,12 +518,38 @@ async function importTableFile(table, file) {
   return rows.length;
 }
 
+function csvCell(value) {
+  const text = String(value ?? "");
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function exportTableCsv(table) {
+  const page = pages.find((item) => item.table === table);
+  const tableColumns = columns[table] || [];
+  const rows = filteredRows(page);
+  if (!rows.length) throw new Error("No candidate records available to export.");
+  const header = ["Sr. No", ...tableColumns.map(titleize)];
+  const lines = [
+    header.map(csvCell).join(","),
+    ...rows.map((row, index) => [index + 1, ...tableColumns.map((column) => row[column] ?? "")].map(csvCell).join(","))
+  ];
+  const blob = new Blob([`\uFEFF${lines.join("\n")}`], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `recruitment-candidates-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(link.href);
+}
+
 document.addEventListener("click", async (event) => {
   const pageButton = event.target.closest("[data-page]");
   const filterButton = event.target.closest("[data-filter]");
   const saveButton = event.target.closest("[data-save]");
   const deleteButton = event.target.closest("[data-delete]");
   const importButton = event.target.closest("[data-import]");
+  const exportButton = event.target.closest("[data-export]");
   const clearButton = event.target.closest("[data-clear-table]");
 
   try {
@@ -508,12 +558,15 @@ document.addEventListener("click", async (event) => {
       state.activeFilter = filterButton.dataset.filter;
       await showPage(state.page);
     }
-    if ((saveButton || deleteButton || importButton || clearButton) && !canEdit()) {
+    if ((saveButton || deleteButton || importButton || exportButton || clearButton) && !canEdit()) {
       alert("This test profile is view-only.");
       return;
     }
     if (importButton) {
       $("#recruitmentImportFile")?.click();
+    }
+    if (exportButton) {
+      exportTableCsv(exportButton.dataset.export);
     }
     if (clearButton && confirm("This will delete all Recruitment Tracker records. Continue?")) {
       clearButton.disabled = true;
@@ -554,7 +607,7 @@ $("#loginForm").addEventListener("submit", async (event) => {
   $("#loginMessage").textContent = "";
   try {
     state.session = await signIn($("#username").value, $("#password").value);
-    await loadPageData();
+    await loadDashboardData();
     renderShell();
     renderDashboard();
   } catch (error) {
@@ -596,7 +649,11 @@ $("#refreshButton").addEventListener("click", async () => {
     renderShell();
     return;
   }
-  await loadPageData();
+  if (state.page === "dashboard") await loadDashboardData({ force: true });
+  else {
+    const page = pages.find((item) => item.key === state.page);
+    await ensurePageData(page, { force: true });
+  }
   await showPage(state.page);
 });
 
@@ -645,7 +702,7 @@ $("#recordForm").addEventListener("submit", async (event) => {
   renderShell();
   if (state.session) {
     state.portalUser = await verifyPortalAccess();
-    await loadPageData();
+    await loadDashboardData();
     await showPage(state.page);
   }
   updateAbuDhabiTime();
