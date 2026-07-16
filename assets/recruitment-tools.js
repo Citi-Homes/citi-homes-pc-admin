@@ -48,6 +48,7 @@
     if (title !== "Recruitment Tracker") return;
     const importButton = tools.querySelector("[data-import='recruitment']");
     const clearButton = tools.querySelector("[data-clear-table]");
+    const templateButton = addTemplateButton(tools);
     let button = tools.querySelector("[data-export='recruitment'], [data-export-candidates]");
 
     if (!button) {
@@ -58,7 +59,8 @@
     }
 
     button.textContent = "Export Recruitment Data";
-    if (importButton) importButton.insertAdjacentElement("afterend", button);
+    if (templateButton) templateButton.insertAdjacentElement("afterend", button);
+    else if (importButton) importButton.insertAdjacentElement("afterend", button);
     else tools.insertBefore(button, clearButton || null);
 
     if (clearButton) {
@@ -82,15 +84,19 @@
 
   function addTemplateButton() {
     const pageTitle = document.querySelector("#pageTitle");
-    const panel = document.querySelector("#addRecordPanel");
-    if (!pageTitle || !panel || pageTitle.textContent.trim() !== "Recruitment Tracker") return;
-    if (panel.querySelector("[data-recruitment-template]")) return;
-    const button = document.createElement("button");
+    const tools = document.querySelector("#pageTools");
+    if (!pageTitle || !tools || pageTitle.textContent.trim() !== "Recruitment Tracker") return null;
+    let button = tools.querySelector("[data-recruitment-template]");
+    if (button) return button;
+    button = document.createElement("button");
     button.type = "button";
     button.className = "pill import-template-button";
     button.dataset.recruitmentTemplate = "true";
-    button.textContent = "Download Import Template";
-    panel.appendChild(button);
+    button.textContent = "Import Data Template";
+    const importButton = tools.querySelector("[data-import='recruitment']");
+    if (importButton) importButton.insertAdjacentElement("afterend", button);
+    else tools.appendChild(button);
+    return button;
   }
 
   function exportVisibleTable(filenamePrefix, emptyMessage) {
