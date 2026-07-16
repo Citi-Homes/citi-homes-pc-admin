@@ -236,18 +236,18 @@ function renderDashboard() {
   const employeeCount = (state.rows.employees || []).length;
   const recruitmentOpen = (state.rows.recruitment || []).filter((row) => !["Joined", "Rejected"].includes(row.status)).length;
   const documentsDue = (state.rows.documents || []).filter((row) => row.status !== "Valid").length;
-  const vendorCount = (state.rows.vendors || []).length;
+  const utilityBillCount = (state.rows.utilities || []).length;
 
   $("#dashboard").innerHTML = `
     <div class="summary-grid">
       ${metric("Employees", employeeCount)}
       ${metric("Open Recruitment", recruitmentOpen)}
       ${metric("Document Alerts", documentsDue)}
-      ${metric("Vendors", vendorCount)}
+      ${metric("Utility Bills", utilityBillCount)}
     </div>
     <div class="glass empty-state">
       <h3>Citi Homes Administration</h3>
-      <p>Manage Operations, P&C and Administration, Procurement, recruitment, attendance, pantry, vendors and office controls from one clean dashboard.</p>
+      <p>Manage Operations, P&C and Administration, Procurement, recruitment, attendance, pantry, utility bills and office controls from one clean dashboard.</p>
     </div>
   `;
 }
