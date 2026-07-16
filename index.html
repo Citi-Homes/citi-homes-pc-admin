@@ -6,7 +6,7 @@
   <title>Citi Homes Administration</title>
   <meta name="description" content="Citi Homes P&C Administration System">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="assets/admin.css?v=liquid-tabs-layout-20260716">
+  <link rel="stylesheet" href="assets/admin.css?v=header-align-20260716">
 </head>
 <body>
   <main id="loginView" class="login-shell">
@@ -65,7 +65,7 @@
             <span id="abuDhabiTime">--:--</span>
             <span id="abuDhabiWeather">--°C</span>
           </div>
-          <button id="refreshButton">Sign out</button>
+          <button id="refreshButton">Logout</button>
         </div>
       </header>
 
@@ -90,5 +90,15 @@
   <script src="assets/supabase-config.js?v=header-speed-fix-20260716"></script>
   <script src="assets/admin-clean.js?v=header-speed-fix-20260716"></script>
   <script src="assets/recruitment-tools.js?v=recruitment-import-helper-20260716"></script>
+  <script>
+    (function () {
+      function normalizeLogoutText() {
+        var button = document.getElementById("refreshButton");
+        if (button && button.textContent.trim() !== "Logout") button.textContent = "Logout";
+      }
+      normalizeLogoutText();
+      new MutationObserver(normalizeLogoutText).observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
 </body>
 </html>
