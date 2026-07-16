@@ -45,7 +45,9 @@
   }
 
   function patchRecruitmentImporter() {
-    if (!Array.isArray(window.columns?.recruitment)) return;
+    const importColumns = {
+      recruitment: ["candidate", "position", "source", "mobile", "location", "gcc_experience", "total_experience", "current_salary", "expected_salary", "notice_period", "interview_date", "status"]
+    };
 
     const aliases = {
       candidate: ["candidate", "candidate name", "full name", "applicant", "applicant name", "name"],
@@ -63,7 +65,7 @@
     };
 
     window.mapImportRows = function mapImportRows(table, rawRows) {
-      const cols = window.columns?.[table] || [];
+      const cols = importColumns[table] || [];
       const header = (rawRows[0] || []).map(normalizeImportHeader);
       return rawRows.slice(1).map((rawRow) => {
         const row = {};
