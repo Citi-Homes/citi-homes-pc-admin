@@ -1588,3 +1588,65 @@ td:nth-child(5) select {
   white-space: nowrap !important;
   transform: translateY(0) !important;
 }
+
+
+/* Controlled professional login logo lockup */
+.login-brand {
+  display: grid !important;
+  grid-template-columns: 82px minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 1rem !important;
+  min-height: 150px !important;
+  max-width: 100% !important;
+}
+
+.login-brand .brand-mark {
+  width: 82px !important;
+  height: 150px !important;
+  min-height: 150px !important;
+  align-self: start !important;
+  border-radius: 36px !important;
+  flex: 0 0 82px !important;
+}
+
+.login-title-stack {
+  height: auto !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+  gap: 0.32rem !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+}
+
+.login-brand h1 {
+  margin: 0 !important;
+  color: var(--gold-dark) !important;
+  background: linear-gradient(135deg, #242527 0%, #4d4638 52%, #b99a5f 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  font-size: clamp(3.55rem, 6.2vw, 4.05rem) !important;
+  font-weight: 900 !important;
+  line-height: 0.88 !important;
+  letter-spacing: -0.075em !important;
+  white-space: nowrap !important;
+  transform: translate(-0.035em, -0.015em) !important;
+  max-width: 100% !important;
+}
+
+.login-subtitle {
+  margin: 0 !important;
+  color: var(--gold-dark) !important;
+  font-size: clamp(1.04rem, 2.1vw, 1.18rem) !important;
+  font-weight: 850 !important;
+  line-height: 1.04 !important;
+  letter-spacing: 0.01em !important;
+  white-space: nowrap !important;
+  transform: translateY(0) !important;
+  max-width: 100% !important;
+}
