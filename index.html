@@ -93,176 +93,210 @@
       url: "https://xcddssirxwhywvhspica.supabase.co",
       anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjZGRzc2lyeHdoeXd2aHNwaWNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTE5MTgsImV4cCI6MjA5OTE4NzkxOH0.noB3pIB90bnfQX9ERMI1fK3hQTds7qqq7BPXVla7H3w"
     };
-
-    (function () {
-      function createClient(url, anonKey) {
-        var storageKey = 'citi_homes_session';
-        var session = null;
-        try {
-          var raw = localStorage.getItem(storageKey);
-          if (raw) session = JSON.parse(raw);
-        } catch (error) {}
-
-        function persist(nextSession) {
-          session = nextSession || null;
-          try {
-            if (session) localStorage.setItem(storageKey, JSON.stringify(session));
-            else localStorage.removeItem(storageKey);
-          } catch (error) {}
-        }
-
-        function headers(extra) {
-          var token = session && session.access_token ? session.access_token : anonKey;
-          return Object.assign({
-            apikey: anonKey,
-            Authorization: 'Bearer ' + token,
-            'Content-Type': 'application/json',
-            Accept: 'application/json'
-          }, extra || {});
-        }
-
-        async function readJson(path, options) {
-          var response = await fetch(url + path, options);
-          var text = await response.text();
-          var data = null;
-          if (text) {
-            try { data = JSON.parse(text); } catch (error) { data = text; }
-          }
-          if (!response.ok) {
-            var message = (data && data.message) || (data && data.msg) || text || ('HTTP ' + response.status);
-            return { data: null, error: new Error(message) };
-          }
-          return { data: data, error: null };
-        }
-
-        function buildQuery(state) {
-          var parts = [];
-          parts.push('select=' + encodeURIComponent(state.columns || '*'));
-          state.filters.forEach(function (filter) {
-            if (filter.kind === 'eq') parts.push(encodeURIComponent(filter.column) + '=eq.' + encodeURIComponent(String(filter.value)));
-            if (filter.kind === 'in') parts.push(encodeURIComponent(filter.column) + '=in.(' + filter.values.map(function (value) { return String(value).replace(/)/g, '\)'); }).join(',') + ')');
-          });
-          if (state.order) parts.push('order=' + encodeURIComponent(state.order.column + '.' + (state.order.ascending ? 'asc' : 'desc')));
-          if (state.limit != null) parts.push('limit=' + encodeURIComponent(String(state.limit)));
-          return parts.join('&');
-        }
-
-        function makeBuilder(table) {
-          var state = { columns: '*', filters: [], limit: null, order: null, mode: 'select', payload: null, single: false };
-
-          async function execute() {
-            var query = buildQuery(state);
-            if (state.mode === 'delete') {
-              var del = await fetch(url + '/rest/v1/' + encodeURIComponent(table) + '?' + query, {
-                method: 'DELETE',
-                headers: headers({ Prefer: 'return=representation' })
-              });
-              var delText = await del.text();
-              var delData = null;
-              if (delText) {
-                try { delData = JSON.parse(delText); } catch (error) { delData = delText; }
-              }
-              if (!del.ok) return { data: null, error: new Error((delData && delData.message) || delText || ('HTTP ' + del.status)) };
-              return { data: delData, error: null };
-            }
-            if (state.mode === 'insert' || state.mode === 'upsert') {
-              var insertUrl = url + '/rest/v1/' + encodeURIComponent(table) + (state.mode === 'upsert' && state.payload && state.payload.id != null ? '?on_conflict=id' : '');
-              var postHeaders = headers({ Prefer: state.mode === 'upsert' ? 'resolution=merge-duplicates,return=representation' : 'return=representation' });
-              var post = await fetch(insertUrl, { method: 'POST', headers: postHeaders, body: JSON.stringify(state.payload) });
-              var postText = await post.text();
-              var postData = null;
-              if (postText) {
-                try { postData = JSON.parse(postText); } catch (error) { postData = postText; }
-              }
-              if (!post.ok) return { data: null, error: new Error((postData && postData.message) || postText || ('HTTP ' + post.status)) };
-              return { data: state.single ? (Array.isArray(postData) ? postData[0] : postData) : postData, error: null };
-            }
-            var get = await fetch(url + '/rest/v1/' + encodeURIComponent(table) + '?' + query, { method: 'GET', headers: headers() });
-            var getText = await get.text();
-            var getData = null;
-            if (getText) {
-              try { getData = JSON.parse(getText); } catch (error) { getData = getText; }
-            }
-            if (!get.ok) return { data: null, error: new Error((getData && getData.message) || getText || ('HTTP ' + get.status)) };
-            return { data: state.single ? (Array.isArray(getData) ? getData[0] : getData) : getData, error: null };
-          }
-
-          var builder = {
-            select: function (columns) { state.mode = 'select'; state.columns = columns || '*'; return builder; },
-            order: function (column, options) { state.order = { column: column, ascending: !(options && options.ascending === false) }; return builder; },
-            limit: function (count) { state.limit = count; return builder; },
-            single: function () { state.single = true; return builder; },
-            upsert: function (payload) { state.mode = 'upsert'; state.payload = payload; return builder; },
-            insert: function (payload) { state.mode = 'insert'; state.payload = payload; return builder; },
-            delete: function () { state.mode = 'delete'; return builder; },
-            eq: function (column, value) { state.filters.push({ kind: 'eq', column: column, value: value }); return builder; },
-            in: function (column, values) { state.filters.push({ kind: 'in', column: column, values: values || [] }); return builder; },
-            then: function (resolve, reject) { return execute().then(resolve, reject); }
-          };
-          return builder;
-        }
-
-        return {
-          auth: {
-            signInWithPassword: async function (_ref) {
-              var email = _ref.email;
-              var password = _ref.password;
-              var response = await fetch(url + '/auth/v1/token?grant_type=password', {
-                method: 'POST',
-                headers: headers(),
-                body: JSON.stringify({ email: email, password: password })
-              });
-              var text = await response.text();
-              var payload = null;
-              if (text) {
-                try { payload = JSON.parse(text); } catch (error) { payload = text; }
-              }
-              if (!response.ok) return { data: null, error: new Error((payload && payload.message) || (payload && payload.msg) || text || ('HTTP ' + response.status)) };
-              var nextSession = { access_token: payload.access_token, refresh_token: payload.refresh_token, token_type: payload.token_type || 'bearer', expires_in: payload.expires_in, expires_at: payload.expires_in ? Math.floor(Date.now() / 1000) + Number(payload.expires_in) : null, user: payload.user || null };
-              persist(nextSession);
-              return { data: { session: nextSession, user: payload.user || null }, error: null };
-            },
-            signOut: async function () {
-              if (session && session.access_token) {
-                try { await fetch(url + '/auth/v1/logout', { method: 'POST', headers: headers() }); } catch (error) {}
-              }
-              persist(null);
-              return { data: null, error: null };
-            },
-            getSession: async function () {
-              return { data: { session: session }, error: null };
-            }
-          },
-          from: function (table) { return makeBuilder(table); }
-        };
-      }
-
-      window.supabase = { createClient: createClient };
-    })();
   </script>
 
-  <script src="assets/admin-clean.js?v=login-bootstrap-20260718-3"></script>
-  <script src="assets/recruitment-tools.js?v=login-bootstrap-20260718-3"></script>
+  <script>
+(function () {
+  window.CITI_HOMES_SUPABASE = {
+    url: "https://xcddssirxwhywvhspica.supabase.co",
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjZGRzc2lyeHdoeXd2aHNwaW5kaWNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MTE5MTgsImV4cCI6MjA5OTE4NzkxOH0.noB3pIB90bnfQX9ERMI1fK3hQTds7qqq7BPXVla7H3w"
+  };
+
+  function createClient(url, anonKey) {
+    var storageKey = "citi_homes_session";
+    var session = null;
+    try {
+      var raw = localStorage.getItem(storageKey);
+      if (raw) session = JSON.parse(raw);
+    } catch (error) {}
+
+    function persist(nextSession) {
+      session = nextSession || null;
+      try {
+        if (session) localStorage.setItem(storageKey, JSON.stringify(session));
+        else localStorage.removeItem(storageKey);
+      } catch (error) {}
+    }
+
+    function headers(extra) {
+      var token = (session && session.access_token) ? session.access_token : anonKey;
+      return Object.assign({
+        apikey: anonKey,
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      }, extra || {});
+    }
+
+    async function jsonRequest(path, options) {
+      var response = await fetch(url + path, options);
+      var text = await response.text();
+      var data = null;
+      if (text) {
+        try { data = JSON.parse(text); } catch (error) { data = text; }
+      }
+      if (!response.ok) {
+        var message = (data && data.msg) || (data && data.message) || text || ("HTTP " + response.status);
+        return { data: null, error: new Error(message) };
+      }
+      return { data: data, error: null };
+    }
+
+    function buildQuery(state) {
+      var params = new URLSearchParams();
+      params.set("select", state.columns || "*");
+      state.filters.forEach(function (filter) {
+        if (filter.kind === "eq") params.append(filter.column, "eq." + encodeURIComponent(String(filter.value)));
+        if (filter.kind === "in") params.append(filter.column, "in.(" + filter.values.map(function (value) { return String(value).split(")").join("\)"); }).join(",") + ")");
+      });
+      if (state.order) params.set("order", state.order.column + "." + (state.order.ascending ? "asc" : "desc"));
+      if (state.limit != null) params.set("limit", String(state.limit));
+      return params.toString();
+    }
+
+    function makeBuilder(table) {
+      var state = {
+        columns: "*",
+        filters: [],
+        limit: null,
+        order: null,
+        mode: "select",
+        payload: null,
+        single: false
+      };
+
+      async function execute() {
+        var query = buildQuery(state);
+        var path = "/rest/v1/" + encodeURIComponent(table) + (query ? "?" + query : "");
+        if (state.mode === "delete") {
+          var deleteResponse = await fetch(url + path, {
+            method: "DELETE",
+            headers: headers({ Prefer: "return=representation" })
+          });
+          var deleteText = await deleteResponse.text();
+          var deleteData = null;
+          if (deleteText) {
+            try { deleteData = JSON.parse(deleteText); } catch (error) { deleteData = deleteText; }
+          }
+          if (!deleteResponse.ok) return { data: null, error: new Error((deleteData && deleteData.message) || deleteText || ("HTTP " + deleteResponse.status)) };
+          return { data: deleteData, error: null };
+        }
+        if (state.mode === "insert" || state.mode === "upsert") {
+          var body = Array.isArray(state.payload) ? state.payload : [state.payload];
+          var insertHeaders = headers({
+            Prefer: state.mode === "upsert" ? "resolution=merge-duplicates,return=representation" : "return=representation"
+          });
+          var insertUrl = url + "/rest/v1/" + encodeURIComponent(table);
+          if (state.mode === "upsert" && body[0] && body[0].id != null) {
+            insertUrl += "?on_conflict=id";
+          }
+          var insertResponse = await fetch(insertUrl, {
+            method: "POST",
+            headers: insertHeaders,
+            body: JSON.stringify(Array.isArray(state.payload) ? state.payload : state.payload)
+          });
+          var insertText = await insertResponse.text();
+          var insertData = null;
+          if (insertText) {
+            try { insertData = JSON.parse(insertText); } catch (error) { insertData = insertText; }
+          }
+          if (!insertResponse.ok) return { data: null, error: new Error((insertData && insertData.message) || insertText || ("HTTP " + insertResponse.status)) };
+          if (state.single) return { data: Array.isArray(insertData) ? insertData[0] : insertData, error: null };
+          return { data: insertData, error: null };
+        }
+        var selectResponse = await fetch(url + path, { method: "GET", headers: headers() });
+        var selectText = await selectResponse.text();
+        var selectData = null;
+        if (selectText) {
+          try { selectData = JSON.parse(selectText); } catch (error) { selectData = selectText; }
+        }
+        if (!selectResponse.ok) return { data: null, error: new Error((selectData && selectData.message) || selectText || ("HTTP " + selectResponse.status)) };
+        if (state.single) return { data: Array.isArray(selectData) ? selectData[0] : selectData, error: null };
+        return { data: selectData, error: null };
+      }
+
+      var builder = {
+        select: function (columns) { state.mode = "select"; state.columns = columns || "*"; return builder; },
+        order: function (column, options) { state.order = { column: column, ascending: !options || options.ascending !== false }; return builder; },
+        limit: function (count) { state.limit = count; return builder; },
+        single: function () { state.single = true; return builder; },
+        upsert: function (payload) { state.mode = "upsert"; state.payload = payload; return builder; },
+        insert: function (payload) { state.mode = "insert"; state.payload = payload; return builder; },
+        delete: function () { state.mode = "delete"; return builder; },
+        eq: function (column, value) { state.filters.push({ kind: "eq", column: column, value: value }); return builder; },
+        in: function (column, values) { state.filters.push({ kind: "in", column: column, values: values || [] }); return builder; },
+        then: function (resolve, reject) { return execute().then(resolve, reject); }
+      };
+
+      return builder;
+    }
+
+    return {
+      auth: {
+        signInWithPassword: async function (_ref) {
+          var email = _ref.email;
+          var password = _ref.password;
+          var response = await fetch(url + "/auth/v1/token?grant_type=password", {
+            method: "POST",
+            headers: headers(),
+            body: JSON.stringify({ email: email, password: password })
+          });
+          var text = await response.text();
+          var payload = null;
+          if (text) {
+            try { payload = JSON.parse(text); } catch (error) { payload = text; }
+          }
+          if (!response.ok) return { data: null, error: new Error((payload && payload.msg) || (payload && payload.message) || text || ("HTTP " + response.status)) };
+          var nextSession = {
+            access_token: payload.access_token,
+            refresh_token: payload.refresh_token,
+            token_type: payload.token_type || "bearer",
+            expires_in: payload.expires_in,
+            expires_at: payload.expires_in ? Math.floor(Date.now() / 1000) + Number(payload.expires_in) : null,
+            user: payload.user || null
+          };
+          persist(nextSession);
+          return { data: { session: nextSession, user: payload.user || null }, error: null };
+        },
+        signOut: async function () {
+          if (session && session.access_token) {
+            try {
+              await fetch(url + "/auth/v1/logout", { method: "POST", headers: headers() });
+            } catch (error) {}
+          }
+          persist(null);
+          return { data: null, error: null };
+        },
+        getSession: async function () {
+          return { data: { session: session }, error: null };
+        }
+      },
+      from: function (table) { return makeBuilder(table); }
+    };
+  }
+
+  window.supabase = { createClient: createClient };
+})();
+</script>
+
+  <script src="assets/admin-clean.js?v=login-bootstrap-20260718-4"></script>
+  <script src="assets/recruitment-tools.js?v=login-bootstrap-20260718-4"></script>
   <script>
     (function () {
       function normalizeLogoutText() {
         var button = document.getElementById('refreshButton');
         if (button && button.textContent.trim() !== 'Logout') button.textContent = 'Logout';
       }
-
       function setupPasswordToggle() {
         var input = document.getElementById('password');
         var button = document.getElementById('passwordToggle');
         if (!input || !button || button.dataset.passwordReady === 'true') return;
-
         button.dataset.passwordReady = 'true';
         button.textContent = 'Eye';
         button.setAttribute('aria-label', 'Hold to show password');
         button.setAttribute('title', 'Hold to show password');
-
         function showPassword(event) { if (event) event.preventDefault(); input.type = 'text'; button.classList.add('password-visible'); }
         function hidePassword(event) { if (event) event.preventDefault(); input.type = 'password'; button.classList.remove('password-visible'); }
-
         button.addEventListener('pointerdown', showPassword);
         button.addEventListener('pointerup', hidePassword);
         button.addEventListener('pointercancel', hidePassword);
@@ -271,9 +305,7 @@
         button.addEventListener('keydown', function (event) { if (event.key === ' ' || event.key === 'Enter') showPassword(event); });
         button.addEventListener('keyup', function (event) { if (event.key === ' ' || event.key === 'Enter') hidePassword(event); });
       }
-
       function refreshUiHelpers() { normalizeLogoutText(); setupPasswordToggle(); }
-
       function markActionButton(button) {
         if (!button || button.classList.contains('action-working') || button.classList.contains('action-done')) return;
         button.dataset.originalText = button.textContent.trim();
@@ -281,13 +313,11 @@
         button.textContent = '';
         window.setTimeout(function () { button.classList.remove('action-working'); button.classList.add('action-done'); button.textContent = '✓'; }, 360);
       }
-
       document.addEventListener('click', function (event) {
         var button = event.target.closest('[data-save], [data-delete]');
         if (!button) return;
         markActionButton(button);
       }, true);
-
       refreshUiHelpers();
       new MutationObserver(refreshUiHelpers).observe(document.body, { childList: true, subtree: true });
     })();
